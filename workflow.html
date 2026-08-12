@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRE Chaos Sandbox: Operational Journey</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg: #070a13;
+      --card-bg: rgba(22, 28, 45, 0.4);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-glow: rgba(59, 130, 246, 0.2);
+      --accent: #f59e0b;
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.1);
+      
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.06) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.5;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+      position: relative;
+    }
+
+    .brand-badge {
+      display: inline-block;
+      background: var(--primary-glow);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+      animation: pulseGlow 3s infinite alternate;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-desc {
+      color: var(--text-muted);
+      font-size: 15px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ---------- Interactive Timeline ---------- */
+    .timeline {
+      position: relative;
+      margin-bottom: 65px;
+      padding-left: 30px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 10px;
+      bottom: 10px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--primary), var(--success), var(--accent));
+      opacity: 0.3;
+    }
+
+    .step-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 30px;
+      backdrop-filter: blur(12px);
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .step-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: rgba(22, 28, 45, 0.55);
+      transform: translateY(-2px);
+    }
+
+    .step-node {
+      position: absolute;
+      left: -30px;
+      top: 26px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 3px solid var(--primary);
+      box-shadow: 0 0 8px var(--primary-glow);
+      z-index: 10;
+      transition: all 0.3s;
+    }
+
+    .step-card:hover .step-node {
+      background: var(--primary);
+      box-shadow: 0 0 14px var(--primary);
+    }
+
+    .step-card.success-step .step-node {
+      border-color: var(--success);
+    }
+    .step-card.success-step:hover .step-node {
+      background: var(--success);
+      box-shadow: 0 0 14px var(--success);
+    }
+
+    .step-card.accent-step .step-node {
+      border-color: var(--accent);
+    }
+    .step-card.accent-step:hover .step-node {
+      background: var(--accent);
+      box-shadow: 0 0 14px var(--accent);
+    }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 16px;
+    }
+
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .step-card.success-step .step-num { color: var(--success); }
+    .step-card.accent-step .step-num { color: var(--accent); }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .phase-badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-muted);
+    }
+
+    .step-body {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .step-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step-desc {
+      color: #d1d5db;
+      font-size: 13.5px;
+    }
+
+    .step-desc p {
+      margin-bottom: 12px;
+    }
+
+    .checklist-list {
+      list-style: none;
+      margin-top: 10px;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .checklist-item svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: var(--success);
+      stroke-width: 3;
+    }
+
+    .code-box {
+      background: #060913;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #9cdcfe;
+      overflow-x: auto;
+    }
+
+    .code-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ---------- Tabs Triage Cheat Sheet ---------- */
+    .tabs-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      margin-bottom: 40px;
+    }
+
+    .tabs-header {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: var(--font-display);
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .tab-btn.active {
+      background: var(--primary-glow);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+    }
+
+    .tab-pane {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    .triage-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 640px) {
+      .triage-grid { grid-template-columns: 1fr; }
+    }
+
+    .triage-step {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 14px;
+    }
+
+    .triage-step-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ---------- Animations ---------- */
+    @keyframes pulseGlow {
+      from { box-shadow: 0 0 4px rgba(59,130,246,0.1); }
+      to { box-shadow: 0 0 12px rgba(59,130,246,0.4); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <header>
+      <div class="brand-badge">SRE Operations Track</div>
+      <h1>DevOps Chaos Sandbox</h1>
+      <p class="header-desc">Интерактивная инфографика жизненного цикла operational-обучения: от развертывания стенда до написания постмортемов и создания отказоустойчивых систем.</p>
+    </header>
+
+    <div class="timeline">
+      
+      <!-- STEP 1 -->
+      <div class="step-card">
+        <div class="step-node"></div>
+        <div class="step-header">
+          <div>
+            <span class="step-num">Шаг 01</span>
+            <div class="step-title">Установка и инициализация</div>
+          </div>
+          <span class="phase-badge">Подготовка</span>
+        </div>
+        <div class="step-body">
+          <div class="step-desc">
+            <p>Установка платформы на ВМ кандидата выполняется одной командой. Скрипт-установщик создает директорию <code>/opt/chaos-sandbox/</code>, запрашивает Telegram-кредиты бота, пишет переменные в <code>/etc/chaos-sandbox.env</code> и регистрирует демоны systemd.</p>
+            <ul class="checklist-list">
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                ВМ на Ubuntu/Debian с установленным Python 3 & Docker
+              </li>
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Наличие утилиты Traffic Control (tc) для симуляции задержек
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="code-title">Bootstrap на VM</div>
+            <pre class="code-box"><code>sudo bash -c "$(curl -sSL https://raw.githubusercontent.com/shapovalovdev/devops-chaos-sandbox/main/installer.sh)"</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-card">
+        <div class="step-node"></div>
+        <div class="step-header">
+          <div>
+            <span class="step-num">Шаг 02</span>
+            <div class="step-title">Конфигурация алертинга</div>
+          </div>
+          <span class="phase-badge">Мониторинг</span>
+        </div>
+        <div class="step-body">
+          <div class="step-desc">
+            <p>Локальный демон <code>chaos_alerts.py</code> опрашивает endpoint приложения каждые 10 секунд. При обнаружении падения (код != 200 или тайм-аут) он мгновенно шлет вебхук-алерт в Telegram-чат. При восстановлении приложения улетает recovery-нотификация.</p>
+            <ul class="checklist-list">
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Настройка бота через @BotFather в Telegram
+              </li>
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Сохранение TOKEN и CHAT_ID во внешнем .env-файле
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="code-title">Конфиг алертов</div>
+            <pre class="code-box"><code># /etc/chaos-sandbox.env
+TELEGRAM_BOT_TOKEN="12345:ABC"
+TELEGRAM_CHAT_ID="-987654"
+TARGET_APP_URL="http://localhost:5000"</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-card success-step">
+        <div class="step-node"></div>
+        <div class="step-header">
+          <div>
+            <span class="step-num">Шаг 03</span>
+            <div class="step-title">Фаза 1: Хаос на привязи (Chaos on a Leash)</div>
+          </div>
+          <span class="phase-badge" style="color:var(--success); border-color:var(--success);">Недели 1–2</span>
+        </div>
+        <div class="step-body">
+          <div class="step-desc">
+            <p>Планировщик <code>chaos_scheduler.py</code> запускается по таймеру каждые 30 минут, проверяя текущие часы. В Фазе 1 поломки происходят строго в учебное время (Сб/Вс с 12:00 до 18:00). Кандидат учится реагировать live, проверять логи и применять рецепты восстановления.</p>
+            <ul class="checklist-list">
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Поломки только во время слота A
+              </li>
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Реакция live на алерты на телефоне
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="code-title">Ручной запуск (для тестов)</div>
+            <pre class="code-box"><code>sudo env FORCE_CHAOS=1 \
+python3 /opt/chaos-sandbox/chaos_scheduler.py</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-card success-step">
+        <div class="step-node"></div>
+        <div class="step-header">
+          <div>
+            <span class="step-num">Шаг 04</span>
+            <div class="step-title">Фаза 2: Реконструкция инцидента и Постмортем</div>
+          </div>
+          <span class="phase-badge" style="color:var(--success); border-color:var(--success);">Недели 3–4</span>
+        </div>
+        <div class="step-body">
+          <div class="step-desc">
+            <p>Слот времени расширяется на будни. Поломки происходят, когда кандидат не сидит за ноутбуком. Кандидат заходит на стенд постфактум и должен воссоздать картину аварии по журналам: Когда упал сервис? Какой был код ошибки? Сколько длился простой? По итогам пишется <i>Blameless Post-Mortem</i>.</p>
+            <ul class="checklist-list">
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Анализ метрик Zabbix / Grafana
+              </li>
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Чтение логов journald с указанием тайм-интервалов
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="code-title">Срез логов в аварийный час</div>
+            <pre class="code-box"><code>journalctl -u postgresql \
+  --since "2026-08-12 11:00:00" \
+  --until "2026-08-12 12:00:00"</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="step-card accent-step">
+        <div class="step-node"></div>
+        <div class="step-header">
+          <div>
+            <span class="step-num">Шаг 05</span>
+            <div class="step-title">Фаза 3: Автоматическое самовосстановление (Self-Healing)</div>
+          </div>
+          <span class="phase-badge" style="color:var(--accent); border-color:var(--accent);">Недели 5–6</span>
+        </div>
+        <div class="step-body">
+          <div class="step-desc">
+            <p>Финальная цель трека SRE. Сценарии хаоса стреляют в любое время. Кандидату запрещено чинить сбои руками — он должен спроектировать автоматическую защиту. Система должна восстанавливаться сама без ручной помощи, а плейбуки Ansible не должны ломаться при выключенной БД.</p>
+            <ul class="checklist-list">
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Настройка restart-политик docker-контейнеров
+              </li>
+              <li class="checklist-item">
+                <svg viewBox="0 0 16 16"><path d="M2 8l4 4 8-8"/></svg>
+                Внедрение retry-логики в Flask и wait-for в Ansible
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="code-title">Ansible Wait Task</div>
+            <pre class="code-box"><code>- name: Wait for DB
+  ansible.builtin.wait_for:
+    host: "{{ db_host }}"
+    port: 5432
+    timeout: 60</code></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TABBED CHEATSHEET -->
+    <div class="tabs-container">
+      <h2>Рецепты восстановления (Triage Cheat Sheet)</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Переключайте вкладки, чтобы посмотреть команды разбора различных типов аварий:</p>
+      
+      <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab-latency')">Задержка сети (Latency)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-crash')">Падение БД (DB Outage)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-disk')">Переполнение диска (Disk Full)</button>
+      </div>
+
+      <!-- LATENCY -->
+      <div id="tab-latency" class="tab-pane active">
+        <div class="triage-grid">
+          <div class="triage-step">
+            <div class="triage-step-title">🔍 Диагностика</div>
+            <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">Проверить, наложены ли правила задержки пакетов (netem delay) на петлевой интерфейс:</p>
+            <pre class="code-box"><code>tc qdisc show dev lo</code></pre>
+          </div>
+          <div class="triage-step">
+            <div class="triage-step-title">🔧 Решение</div>
+            <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">Удалить корневую дисциплину tc qdisc с интерфейса lo:</p>
+            <pre class="code-box"><code>sudo tc qdisc del dev lo root</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRASH -->
+      <div id="tab-crash" class="tab-pane">
+        <div class="triage-grid">
+          <div class="triage-step">
+            <div class="triage-step-title">🔍 Диагностика</div>
+            <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">Проверить запущенные контейнеры или юнит postgresql:</p>
+            <pre class="code-box"><code>docker ps -a
+# или
+systemctl status postgresql</code></pre>
+          </div>
+          <div class="triage-step">
+            <div class="triage-step-title">🔧 Решение</div>
+            <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">Включить автозапуск контейнера и поднять его:</p>
+            <pre class="code-box"><code>docker update --restart=always postgres
+docker start postgres
+# или: systemctl enable --now postgresql</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISK -->
+      <div id="tab-disk" class="tab-pane">
+        <div class="triage-grid">
+          <div class="triage-step">
+            <div class="triage-step-title">🔍 Диагностика</div>
+            <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">Проверить свободное место и найти аномально большие файлы:</p>
+            <pre class="code-box"><code>df -h /var/log
+sudo find /var/log -type f -size +100M</code></pre>
+          </div>
+          <div class="triage-step">
+            <div class="triage-step-title">🔧 Решение</div>
+            <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">Удалить временный junk-файл заполнения диска:</p>
+            <pre class="code-box"><code>sudo rm -f /var/log/system-journal-cache.tmp</code></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    function switchTab(evt, tabId) {
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      
+      document.getElementById(tabId).classList.add('active');
+      evt.currentTarget.classList.add('active');
+    }
+  </script>
+
+</body>
+</html>
